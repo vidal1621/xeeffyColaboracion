@@ -10,7 +10,7 @@
         <img src="/static/images/xeeffy_logo_index.png" width="20%" align="top">
         <h1>{{ desc_role }}</h1>
         <div id="company" class="clearfix">
-            <div>XEEFFY MEMOS</div>
+            <div>XEEFFY BALANCES</div>
             <div>Casa Matriz • ,<br/> El Juncal 0240, Quilicura • Chile</div>
             <div>+56988295769</div>
             <div><a href="mailto:company@example.com">aherrera@xeeffy.cl</a></div>
@@ -18,6 +18,8 @@
         <div id="project">
             <div><span>ENTIDAD</span>{{ entidad }} </div>
             <div><span>FECHA</span>{{ hoy }}</div>
+            <div><span>MONEDA</span>{{ moneda }}</div>
+            <div><span>DECIMALES</span>{{ decimales }}</div>
         </div>
     </header>
     <main>
@@ -44,11 +46,6 @@
                 style="float:center">
             Exportar
         </a>
-{#        <a class="btn btn-success btn-sm fa fa-file-excel-o" id="btnpdf" href="/topdf/{{ cod_documento }}/210000"#}
-{#                style="float:center">#}
-{#            Exportar#}
-{#        </a>#}
-
     <br>
         <iframe id="txtArea1" style="display:none"></iframe>
         <br>
@@ -91,5 +88,15 @@
 
             return (sa);
         }
+        var delayInMilliseconds = 1000;
+    setTimeout(function(){
+        printHTML()
+
+        function printHTML() {
+            if (window.print) {
+                window.print();
+            }
+        }
+    },delayInMilliseconds);
     </script>
 {% endblock %}

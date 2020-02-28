@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF8 -*-
-import decimal
 import hashlib
-import operator
 import sys
 from itertools import cycle
-
 import requests
 import xmltodict
 from oauthlib.oauth2 import WebApplicationClient
 from sqlalchemy.testing.pickleable import User
-
-from form import RegisterForm
 from pivot import pivot
 from reportlab.lib.styles import getSampleStyleSheet
 from bs4 import BeautifulSoup
@@ -36,8 +31,8 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from reportlab.pdfgen import canvas
 import pdfkit
+
 
 # dbdir = "sqlite:///" + "xeeffy.
 
@@ -748,7 +743,6 @@ def get_balanceindustriaportadaactivos(cod_entidad, anio, mes, nivel):
     COLUMNAS1.append("industria")
     COLUMNAS2.append(anios[0])
     COLUMNAS2.append(anios[1])
-
     return COLUMNAS1, COLUMNAS2, RESULTADO
 
 
@@ -819,7 +813,6 @@ def get_balanceindustriaportadapasivos(cod_entidad, anio, mes, nivel):
     COLUMNAS1.append("industria")
     COLUMNAS2.append(anios[0])
     COLUMNAS2.append(anios[1])
-
     return COLUMNAS1, COLUMNAS2, RESULTADO
 
 
@@ -860,8 +853,8 @@ public.actividad_entidad where actividad_entidad.sector = '%s'""" % (cod_entidad
         entidadC = cursor.fetchall()
 
         # BALANCE
-        columnas,columnas2,data = get_balanceindustriaportadaactivos(cod_entidad, anio, mes, nivel)
-        columnas5,columnas6,data5 = get_balanceindustriaportadapasivos(cod_entidad, anio, mes, nivel)
+        columnas, columnas2, data = get_balanceindustriaportadaactivos(cod_entidad, anio, mes, nivel)
+        columnas5, columnas6, data5 = get_balanceindustriaportadapasivos(cod_entidad, anio, mes, nivel)
         # cursor.execute(
         #     """select * from resumen_PortadaBalanceindustrias where cod_actividad_nivel%s = '%s' and cod_cuenta='608' and mes='%s' ORDER BY cod_entidad""" % (
         #         nivel, cod_entidad,mes))
@@ -955,9 +948,10 @@ public.actividad_entidad where actividad_entidad.sector = '%s'""" % (cod_entidad
         data3, columnas3 = get_portadaratiosddindustria(cod_entidad, anio, mes, nivel)
         # EERR
         data4, columnas4 = get_portadaeresultadoindustria(cod_entidad, anio, mes, nivel)
-        return render_template("/ResumenIndustria.html",data3=data3,data=data,columnas=columnas,columnas5=columnas5,columnas6=columnas6,data5=data5,
+        return render_template("/ResumenIndustria.html", data3=data3, data=data, columnas=columnas, columnas5=columnas5,
+                               columnas6=columnas6, data5=data5,
                                columnas3=columnas3, data4=list(data4), columnas4=columnas4, entidadC=entidadC,
-                               retail=retail, r1=r1, nivel=nivel, cod_entidad=cod_entidad,columas2=columnas2)
+                               retail=retail, r1=r1, nivel=nivel, cod_entidad=cod_entidad, columas2=columnas2)
     return redirect("/login")
 
 
@@ -1830,7 +1824,6 @@ class jsobXBrl():
         self.loadPeriod()
         self.loadDimension()
         self.loadTipoScenario()
-
         pass
 
     def processJsonXbrl(self):
@@ -2299,6 +2292,107 @@ class jsobXBrl():
             self.contexts[c[3]] = {"entity": c[1], "period": c[2], "id": c[0]}
 
 
+def get_eresultado_pdf(cod_entidad, anio, mes):
+    cursor = cnx.cursor()
+    # DEFINICION DE RATIOS
+    RATIOS = {}
+    RATIOS[
+        'Ingresos de Actividades ordinarias'] = "(float(a.get(540,1)))  if  (a.get(540,0))  else 0"
+    RATIOS[
+        'Costos de Ventas'] = "(float(a.get(727,1)))  if  a.get(727,0)  else 0"
+    RATIOS[
+        'Ganancias Bruta'] = "(float(a.get(805,1)))  if  a.get(805,0)  else 0"
+    RATIOS[
+        'Otros Ingresos'] = "(float(a.get(682,1)))  if  a.get(682,0)  else 0"
+    RATIOS[
+        'Costos de Distribucion'] = "(float(a.get(1324,1)))  if  a.get(1324,0)  else 0"
+    RATIOS[
+        'Gastos de administración'] = "(float(a.get(618,1)))  if  a.get(618,0)  else 0"
+    RATIOS[
+        'Otros gastos, por función'] = "(float(a.get(1325,1)))  if  a.get(1325,0)  else 0"
+    RATIOS[
+        'Otras ganancias (pérdidas)'] = "(float(a.get(815,1)))  if  a.get(815,0)  else 0"
+    RATIOS[
+        'actividades operacionales'] = "(float(a.get(817,1)))  if  a.get(817,0)  else 0"
+    RATIOS[
+        'Ingresos financieros'] = "(float(a.get(558,1)))  if  a.get(558,0)  else 0"
+    RATIOS[
+        'Costos financieros'] = "(float(a.get(764,1)))  if  a.get(764,0)  else 0"
+    RATIOS[
+        'Participación en las ganancias (pérdidas)'] = "(float(a.get(824,1)))  if  a.get(824,0)  else 0"
+    RATIOS[
+        'Diferencias de cambio'] = "(float(a.get(849,1)))  if  a.get(849,0)  else 0"
+    RATIOS[
+        'Resultados por unidades de reajuste'] = "(float(a.get(516,1)))  if  a.get(516,0)  else 0"
+    RATIOS[
+        'importes en libros'] = "(float(a.get(1327,1)))  if  a.get(1327,0)  else 0"
+    RATIOS[
+        'Ganancia (pérdida), antes de impuestos'] = "(float(a.get(788,1)))  if  a.get(788,0)  else 0"
+    RATIOS[
+        'Gasto por impuestos a las ganancias'] = "(float(a.get(476,1)))  if  a.get(476,0)  else 0"
+    RATIOS[
+        'procedente de operaciones'] = "(float(a.get(774,1)))  if  a.get(774,0)  else 0"
+    RATIOS[
+        'Ganancia (pérdida)'] = "(float(a.get(479,1)))  if  a.get(479,0)  else 0"
+    RATIOS[
+        'propietarios de la controladora'] = "(float(a.get(704,1)))  if  a.get(704,0)  else 0"
+    RATIOS[
+        'no controladoras'] = "(float(a.get(868,1)))  if  a.get(868,0)  else 0"
+    RATIOS[
+        'Ganancia (pérdida)'] = "(float(a.get(479,1)))  if  a.get(479,0)  else 0"
+
+    # AÑOS
+    SQL_ANIOS = """select coalesce(min(anio),%s), coalesce(max(anio),%s)  from resumen_eerr_pdf where cod_entidad = '%s' and anio <= %s """
+    anios = {}
+    cursor.execute(
+        SQL_ANIOS % (anio, anio, cod_entidad, anio))
+
+    anios = cursor.fetchone()
+    anio = anios[0]
+    # ENTIDAD
+    cursor.execute(
+        """SELECT DISTINCT
+    * from entidad where cod_entidad ='%s'""" % (
+            cod_entidad))
+    entidad = cursor.fetchone()[1]
+    # FIN ENTIDAD
+    SQL_RESUMEN = """select distinct *  from resumen_eerr_pdf where cod_entidad = '%s' and anio in ('%s') and mes in ('%s')"""
+    RESULTADO = {}
+    cursor.execute(
+        SQL_RESUMEN % (cod_entidad, anio, mes))
+    resumen = cursor.fetchall()
+    existan_datos = resumen != []
+    COLUMNAS = ["E.RESULTADO"]
+    b = dict()
+    for anio in range(anios[0], anios[1] + 1):
+        cursor.execute(
+            SQL_RESUMEN % (cod_entidad, anio, mes))
+        resumen = cursor.fetchall()
+        if resumen:
+            COLUMNAS.insert(1, resumen[0][8])
+            a = dict()
+            for r in resumen:
+                a[r[4]] = r[9]
+            for r in RATIOS:
+                raux = RESULTADO.get(r, [r])
+                raux.insert(1, eval(RATIOS[r]))
+                RESULTADO[r] = raux
+    # while existan_datos:
+    #     COLUMNAS.append(anio)
+    #     a = dict()
+    #     for r in resumen:
+    #         a[r[1]] = r[3]
+    #     for r in RATIOS:
+    #         RESULTADO[r] = RESULTADO.get(r, [r]) + [eval(RATIOS[r])]
+    #     anio = int(anio) - 1
+    #     cursor.execute(
+    #         SQL_RESUMEN % (cod_entidad, anio))
+    #     resumen = cursor.fetchall()
+    #     existan_datos = resumen != []
+    return RESULTADO.values(), COLUMNAS
+
+
+
 def get_eresultado(cod_entidad, anio, mes):
     cursor = cnx.cursor()
     # DEFINICION DE RATIOS
@@ -2383,18 +2477,6 @@ def get_eresultado(cod_entidad, anio, mes):
                 raux = RESULTADO.get(r, [r])
                 raux.insert(1, eval(RATIOS[r]))
                 RESULTADO[r] = raux
-    # while existan_datos:
-    #     COLUMNAS.append(anio)
-    #     a = dict()
-    #     for r in resumen:
-    #         a[r[1]] = r[3]
-    #     for r in RATIOS:
-    #         RESULTADO[r] = RESULTADO.get(r, [r]) + [eval(RATIOS[r])]
-    #     anio = int(anio) - 1
-    #     cursor.execute(
-    #         SQL_RESUMEN % (cod_entidad, anio))
-    #     resumen = cursor.fetchall()
-    #     existan_datos = resumen != []
     return RESULTADO.values(), COLUMNAS
 
 
@@ -4130,8 +4212,10 @@ def memo(cod_documento, cod_role):
         cuenta = d[5]
         dineros = d[8]
         fechas = d[7]
+        decimales = d[9]
+        moneda = d[11]
     hoy = datetime.now()
-    hoy = hoy.strftime("%Y-%m-%d")
+    hoy = hoy.strftime("%d-%m-%Y")
     report = PdfCustomDetail(filename="%s.pdf" % (cod_rol), title=["%s" % (desc_role), entidad.__str__(), cuenta],
                              logo=getattr(sys, 'logo', 'xeeffy_logo_index.png'))
     pvt_kms = pivot(data, ('cod_role_cuenta', 'desc_cuenta'), ('desc_periodo',), 'valor')
@@ -4160,7 +4244,7 @@ def memo(cod_documento, cod_role):
     for d in datas:
         data_final.append(d[1:])
     return render_template("/memo.html", d=data_final, columnas=columnas, entidad=entidad, desc_role=desc_role,
-                           hoy=hoy, cod_documento=cod_documento)
+                           hoy=hoy, cod_documento=cod_documento,moneda=moneda,decimales=decimales)
 
 
 @app.route('/topdf/<cod_documento>/<cod_role>', methods=["GET", "POST"])
@@ -4499,6 +4583,103 @@ def get_eerr(cod_entidad, anio):
     return RESULTADO.values(), COLUMNAS
 
 
+def get_ratiosdd_pdf(cod_entidad, anio, mes):
+    cursor = cnx.cursor()
+    aniom = int(anio) - 1
+    # DEFINICION DE RATIOS
+    RATIOS = {}
+    RATIOS[
+        'Dias de Caja'] = "((float(a.get(739) or 0) / (float(a.get(540) or 1) - float(a.get(479)))) * 365) if (a.get(739,0) and a.get(540,0) and a.get(479)) else 0"
+
+    RATIOS['Liquidez'] = "(float(a.get(608,1)) / float(a.get(668,1))) if (a.get(608,0) and a.get(668,0)) else 0"
+    RATIOS[
+        'Prueba Acida'] = "(float(a.get(608,0)) - float(a.get(695,0))) / float(a.get(668,0)) if (a.get(608,0) and a.get(668,0) and a.get(695,0)) else 0"
+    RATIOS[
+        'Dias De Cobro'] = "float(a.get(775) or 0) / (float(a.get(540) or 0) * float(1.19))* 365 if (a.get(775,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Dias De Pago'] = "((float(a.get(783) or 0)) / (float(a.get(727) or 0) + float(a.get(695) or 0) - float(b.get(695) or 0)))*365 if (a.get(783,0) and a.get(727,0)and b.get(695,0)) else 0"
+    RATIOS[
+        'Rotacion De Inventarios'] = "(float(a.get(695) or 0) / float(a.get(727) or 0)) if (a.get(695,0) and a.get(727,0)) else 0"
+    RATIOS[
+        'Dias De Existencia'] = "((float(a.get(695) or 0) / float(a.get(727) or 0)) * float(365)) if (a.get(695,0) and a.get(727,0)) else 0"
+    RATIOS[
+        'ROI'] = "(float(a.get(479) or 0) / float(a.get(808) or 0)*100) if (a.get(479,0) and a.get(808,0)) else 0"
+    RATIOS[
+        'ROE'] = "(float(a.get(479) or 0) / float(a.get(681) or 0)*100) if (a.get(479,0) and a.get(681,0)) else 0"
+    RATIOS[
+        'Leverage'] = "(float(a.get(519) or 0) / float(a.get(681) or 0)) if (a.get(519,0) and a.get(681,0)) else 0"
+    RATIOS[
+        'Corriente'] = "(float(a.get(668) or 0) / float(a.get(519) or 0)*100) if (a.get(668,0) and a.get(519,0)) else 0"
+    RATIOS[
+        'No Corriente'] = "(float(a[809] or 0) / float(a[519] or 0)*100) if (a.get(809,0) and a.get(519,0)) else 0"
+    RATIOS[
+        'Margen Neto'] = "(float(a.get(479) or 0) / float(a.get(540) or 0)*100) if (a.get(479,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Rotacion Activos'] = "(float(a.get(540) or 0) / float(a.get(808) or 0)) if (a.get(540,0) and a.get(808,0)) else 0"
+    RATIOS[
+        'Apalancamiento'] = "(float(a.get(808) or 0) / float(a.get(681) or 0)) if (a.get(808,0) and a.get(681,0)) else 0"
+    RATIOS[
+        'Dupont'] = "(((float(a.get(479) or 0) / float(a.get(540) or 0)) * (float(a.get(540) or 0) / float(a.get(808) or 0))) * (float(a.get(808) or 0) / float(a.get(681) or 0))*100)  if (a.get(479,0) and a.get(540,0)and a.get(808,0)and a.get(681,0)) else 0"
+    RATIOS[
+        'BPA'] = "(float(a.get(479) or 0) / float(a.get(685) or 0)) if (a.get(479,0) and a.get(685,0)) else 0"
+
+    RATIOS[
+        'Ebitda'] = "(float(a.get(479) or 0) + float(a.get(764)or 0) + float(a.get(476)or 0) + float(a.get(864)or 0)) if (a.get(479,0) and a.get(764,0) and a.get(476) and a.get(864)) else 0"
+    RATIOS[
+        'Cobertura Interes'] = "((float(a.get(479) or 0) + float(a.get(764)) + float(a.get(476)) + float(a.get(832)) + float(a.get(865)))) / float(a.get(764) or 0) if (a.get(479,0) and a.get(764,0) and a.get(476) and a.get(832) and a.get(865)) else 0"
+
+    RATIOS[
+        'Tasa Interes Promedio'] = "float(a.get(764) or 0) / (((float(a.get(582) or 0) + float(a.get(791) or 0) + float(b.get(582) or 0)+ float(b.get(791) or 0)))/2)*100 if (a.get(764,0) and a.get(582,0)and a.get(791,0)  and b.get(582,0)and b.get(791,0)) else 0"
+    # AÑOS
+    SQL_ANIOS = """select coalesce(min(anio),%s), coalesce(max(anio),%s)  from resumen_ratiosdd_pdf  where cod_entidad = '%s' and anio <= %s """
+    anios = {}
+    cursor.execute(
+        SQL_ANIOS % (anio, anio, cod_entidad, anio))
+
+    anios = cursor.fetchone()
+    anio = anios[0]
+    # ENTIDAD
+    cursor.execute(
+        """SELECT DISTINCT
+    * from entidad where cod_entidad ='%s'""" % (
+            cod_entidad))
+    entidad = cursor.fetchone()[1]
+    # FIN ENTIDAD
+    SQL_RESUMEN = """select distinct *  from resumen_ratiosdd_pdf  where cod_entidad = '%s' and anio in ('%s') and mes in ('%s')"""
+    RESULTADO = {}
+    cursor.execute(
+        SQL_RESUMEN % (cod_entidad, anio, mes))
+    resumen = cursor.fetchall()
+    existan_datos = resumen != []
+    COLUMNAS = ["RATIOS"]
+    b = dict()
+    for anio in range(anios[0], anios[1] + 1):
+        cursor.execute(
+            SQL_RESUMEN % (cod_entidad, anio, mes))
+        resumen = cursor.fetchall()
+        if resumen:
+            COLUMNAS.insert(1, resumen[0][8])
+            a = dict()
+            for r in resumen:
+                a[r[4]] = r[9]
+            for r in RATIOS:
+                raux = RESULTADO.get(r, [r])
+                raux.insert(1, eval(RATIOS[r]))
+                RESULTADO[r] = raux
+    # while existan_datos:
+    #     COLUMNAS.append(anio)
+    #     a = dict()
+    #     for r in resumen:
+    #         a[r[1]] = r[3]
+    #     for r in RATIOS:
+    #         RESULTADO[r] = RESULTADO.get(r, [r]) + [eval(RATIOS[r])]
+    #     anio = int(anio) - 1
+    #     cursor.execute(
+    #         SQL_RESUMEN % (cod_entidad, anio))
+    #     resumen = cursor.fetchall()
+    #     existan_datos = resumen != []
+    return RESULTADO.values(), COLUMNAS
+
 # funcion extraccion ratios
 def get_ratiosdd(cod_entidad, anio, mes):
     cursor = cnx.cursor()
@@ -4575,7 +4756,7 @@ def get_ratiosdd(cod_entidad, anio, mes):
             SQL_RESUMEN % (cod_entidad, anio, mes))
         resumen = cursor.fetchall()
         if resumen:
-            COLUMNAS.insert(1, resumen[0][1])
+            COLUMNAS.insert(1, resumen[0][8])
             a = dict()
             for r in resumen:
                 a[r[4]] = r[9]
@@ -4749,10 +4930,58 @@ def get_analisisRelativo(cod_entidad, anio):
             SQL_RESUMEN % (cod_entidad, anio))
         resumen = cursor.fetchall()
         if resumen:
-            COLUMNAS.insert(1, resumen[0][2])
+            COLUMNAS.insert(1, resumen[0][9])
             a = dict()
             for r in resumen:
                 a[r[5]] = r[10]
+            for r in RATIOS:
+                raux = RESULTADO.get(r, [r])
+                raux.insert(1, eval(RATIOS[r]))
+                RESULTADO[r] = raux
+    return RESULTADO.values(), COLUMNAS
+
+
+# funcion para sacar el resumen del reporte NOF-FM
+def get_nofresumen_pdf(cod_entidad, anio, mes):
+    cursor = cnx.cursor()
+    # DEFINICION DE RATIOS
+    RATIOS = {}
+    RATIOS[
+        'NOF'] = "(float(a.get(608,1))- float(a.get(668,1)) + float(a.get(582,1)))  if  (a.get(608,0)) and  (a.get(668,0)) and (a.get(582,0))  else 0"
+    RATIOS[
+        'FM'] = "(float(a.get(681,1))+ float(a.get(668,1)) + float(a.get(809,1)))  if  (a.get(809,0)) and  (a.get(681,0)) and (a.get(668,0))  else 0"
+
+    # AÑOS
+    SQL_ANIOS = """select coalesce(min(anio),%s), coalesce(max(anio),%s)  from nof_resumen  where cod_entidad = '%s' and anio >= '2016' and mes='12'"""
+    anios = {}
+    cursor.execute(
+        SQL_ANIOS % (anio, anio, cod_entidad))
+    anios = cursor.fetchone()
+    anio = anios[0]
+    # ENTIDAD
+    cursor.execute(
+        """SELECT DISTINCT
+    * from entidad where cod_entidad ='%s'""" % (
+            cod_entidad))
+    entidad = cursor.fetchone()[1]
+    # FIN ENTIDAD
+    SQL_RESUMEN = """select distinct *  from nof_resumen  where cod_entidad = '%s' and anio in ('%s') and mes in ('%s')"""
+    RESULTADO = {}
+    cursor.execute(
+        SQL_RESUMEN % (cod_entidad, anio, mes))
+
+    resumen = cursor.fetchall()
+    existan_datos = resumen != []
+    COLUMNAS = ["NOF"]
+    for anio in range(anios[0], anios[1] + 1):
+        cursor.execute(
+            SQL_RESUMEN % (cod_entidad, anio, mes))
+        resumen = cursor.fetchall()
+        if resumen:
+            COLUMNAS.insert(1, resumen[0][8])
+            a = dict()
+            for r in resumen:
+                a[r[4]] = r[9]
             for r in RATIOS:
                 raux = RESULTADO.get(r, [r])
                 raux.insert(1, eval(RATIOS[r]))
@@ -5235,8 +5464,255 @@ def EstructuraFinanciamiento(cod_entidad, anio, mes):
     return render_template("/EstructuraFinanciamiento.html", entidad=entidad, data=list(data), columnas=columnas,
                            empresa=empresa, cod_entidad=cod_entidad)
 
+
+def get_balance_pdf(cod_entidad, anio, mes):
+    cursor = cnx.cursor()
+    # DEFINICION DE RATIOS
+    RATIOS = {}
+    RATIOS[
+        'Efectivo y equivalentes al efectivo'] = "(float(a.get(739,1)))  if  (a.get(739,0))  else 0"
+    RATIOS[
+        'Otros activos financieros corrientes'] = "(float(a.get(607,1)))  if  a.get(607,0)  else 0"
+    RATIOS[
+        'Otros activos no financieros corrientes'] = "(float(a.get(835,1)))  if  a.get(835,0)  else 0"
+    RATIOS[
+        'Deudores comerciales y otras cuentas'] = "(float(a.get(775,1)))  if  a.get(775,0)  else 0"
+    RATIOS[
+        'Cuentas por cobrar, corrientes'] = "(float(a.get(787,1)))  if  a.get(787,0)  else 0"
+    RATIOS[
+        'Inventarios corrientes'] = "(float(a.get(695,1)))  if  a.get(695,0)  else 0"
+    # RATIOS[
+    #     'Activos biológicos corrientes'] = "(float(a.get(1290,1)))  if  a.get(1290,0)  else 0"
+    RATIOS[
+        'Activos por impuestos corrientes, corrientes'] = "(float(a.get(481,1)))  if  a.get(481,0)  else 0"
+    RATIOS[
+        'Total de activos corrientes distintos'] = "(float(a.get(797,1)))  if  a.get(797,0)  else 0"
+    RATIOS[
+        'Activos no corrientes o grupos'] = "(float(a.get(1291,1)))  if  a.get(1291,0)  else 0"
+    RATIOS[
+        'Activos corrientes totales'] = "(float(a.get(608,1)))  if  a.get(608,0)  else 0"
+    RATIOS[
+        'Otros activos financieros no corrientes'] = "(float(a.get(520,1)))  if  a.get(520,0)  else 0"
+    RATIOS[
+        'Otros activos no financieros no corrientes'] = "(float(a.get(462,1)))  if  a.get(462,0)  else 0"
+    RATIOS[
+        'Cuentas por cobrar no corrientes'] = "(float(a.get(753,1)))  if  a.get(753,0)  else 0"
+    # RATIOS[
+    #     'Cuentas por cobrar, no corrientes'] = "(float(a.get(680,1)))  if  a.get(680,0)  else 0"
+    # RATIOS[
+    #     'Inversiones contabilizadas utilizando el método de la participación'] = "(float(a.get(713,1)))  if  a.get(713,0)  else 0"
+    RATIOS[
+        'Activos intangibles distintos de la plusvalía'] = "(float(a.get(748,1)))  if  a.get(748,0)  else 0"
+    # RATIOS[
+    #     'Plusvalía'] = "(float(a.get(866,1)))  if  a.get(866,0)  else 0"
+    RATIOS[
+        'Propiedades, planta y equipo'] = "(float(a.get(456,1)))  if  a.get(456,0)  else 0"
+    # RATIOS[
+    #     'Activos biológicos no corrientes'] = "(float(a.get(1294,1)))  if  a.get(1294,0)  else 0"
+    # RATIOS[
+    #     'Propiedad de inversión'] = "(float(a.get(581,1)))  if  a.get(581,0)  else 0"
+    RATIOS[
+        'Activos por impuestos diferidos'] = "(float(a.get(622,1)))  if  a.get(622,0)  else 0"
+    RATIOS[
+        'Total de activos no corrientes'] = "(float(a.get(825,1)))  if  a.get(825,0)  else 0"
+    RATIOS[
+        'Total de activos'] = "(float(a.get(808,1)))  if  a.get(808,0)  else 0"
+    RATIOS[
+        'Otros pasivos financieros corrientes'] = "(float(a.get(582,1)))  if  a.get(582,0)  else 0"
+    RATIOS[
+        'Cuentas por pagar comerciales'] = "(float(a.get(783,1)))  if  a.get(783,0)  else 0"
+    # RATIOS[
+    #     'Cuentas por pagar a entidades relacionadas, corrientes'] = "(float(a.get(461,1)))  if  a.get(461,0)  else 0"
+    RATIOS[
+        'Otras provisiones a corto plazo'] = "(float(a.get(659,1)))  if  a.get(659,0)  else 0"
+    RATIOS[
+        'Pasivos por impuestos corrientes, corrientes'] = "(float(a.get(477,1)))  if  a.get(477,0)  else 0"
+    RATIOS[
+        'Provisiones corrientes por beneficios a los empleados'] = "(float(a.get(756,1)))  if  a.get(756,0)  else 0"
+    RATIOS[
+        'Otros pasivos no financieros corrientes'] = "(float(a.get(621,1)))  if  a.get(621,0)  else 0"
+    RATIOS[
+        'Total de pasivos corrientes'] = "(float(a.get(745,1)))  if  a.get(745,0)  else 0"
+    # RATIOS[
+    #     'Pasivos corrientes totales'] = "(float(a.get(668,1)))  if  a.get(688,0)  else 0"
+    RATIOS[
+        'Otros pasivos financieros no corrientes'] = "(float(a.get(791,1)))  if  a.get(791,0)  else 0"
+    # RATIOS[
+    #     'Cuentas por pagar no corrientes'] = "(float(a.get(822,1)))  if  a.get(822,0)  else 0"
+    # RATIOS[
+    #     'Cuentas por pagar a entidades relacionadas, no corrientes'] = "(float(a.get(486,1)))  if  a.get(486,0)  else 0"
+    # RATIOS[
+    #     'Otras provisiones a largo plazo'] = "(float(a.get(524,1)))  if  a.get(524,0)  else 0"
+    RATIOS[
+        'Pasivo por impuestos diferidos'] = "(float(a.get(640,1)))  if  a.get(640,0)  else 0"
+    # RATIOS[
+    #     'Provisiones no corrientes por beneficios a los empleados'] = "(float(a.get(629,1)))  if  a.get(629,0)  else 0"
+    # RATIOS[
+    #     'Otros pasivos no financieros no corrientes'] = "(float(a.get(633,1)))  if  a.get(633,0)  else 0"
+    RATIOS[
+        'Total de pasivos no corrientes'] = "(float(a.get(809,1)))  if  a.get(809,0)  else 0"
+    RATIOS[
+        'Total de pasivos'] = "(float(a.get(519,1)))  if  a.get(519,0)  else 0"
+    RATIOS[
+        'Capital emitido'] = "(float(a.get(859,1)))  if  a.get(859,0)  else 0"
+    RATIOS[
+        'Ganancias (pérdidas) acumuladas'] = "(float(a.get(670,1)))  if  a.get(670,0)  else 0"
+    # RATIOS[
+    #     'Prima de emisión'] = "(float(a.get(939,1)))  if  a.get(939,0)  else 0"
+    # RATIOS[
+    #     'Acciones propias en cartera'] = "(float(a.get(1303,1)))  if  a.get(1303,0)  else 0"
+    # RATIOS[
+    #     'Otras participaciones en el patrimonio'] = "(float(a.get(1304,1)))  if  a.get(1304,0)  else 0"
+    RATIOS[
+        'Otras reservas'] = "(float(a.get(789,1)))  if  a.get(789,0)  else 0"
+    RATIOS[
+        'Patrimonio atribuible'] = "(float(a.get(879,1)))  if  a.get(879,0)  else 0"
+    RATIOS[
+        'Participaciones no controladoras'] = "(float(a.get(620,1)))  if  a.get(620,0)  else 0"
+    RATIOS[
+        'Patrimonio total'] = "(float(a.get(681,1)))  if  a.get(681,0)  else 0"
+    RATIOS[
+        'Total de patrimonio y pasivos'] = "(float(a.get(754,1)))  if  a.get(754,0)  else 0"
+
+    # AÑOS
+    SQL_ANIOS = """select coalesce(min(anio),%s), coalesce(max(anio),%s)  from resumen_balance_pdf  where cod_entidad = '%s' and anio <= %s """
+    anios = {}
+    cursor.execute(
+        SQL_ANIOS % (anio, anio, cod_entidad, anio))
+
+    anios = cursor.fetchone()
+    anio = anios[0]
+    # ENTIDAD
+    cursor.execute(
+        """SELECT DISTINCT
+    * from entidad where cod_entidad ='%s'""" % (
+            cod_entidad))
+    entidad = cursor.fetchone()[1]
+    # FIN ENTIDAD
+    SQL_RESUMEN = """select distinct *  from resumen_balance_pdf  where cod_entidad = '%s' and anio in ('%s') and mes in ('%s')"""
+    RESULTADO = {}
+    cursor.execute(
+        SQL_RESUMEN % (cod_entidad, anio, mes))
+    resumen = cursor.fetchall()
+    existan_datos = resumen != []
+    COLUMNAS = ["BALANCE"]
+    b = dict()
+    for anio in range(anios[0], anios[1] + 1):
+        cursor.execute(
+            SQL_RESUMEN % (cod_entidad, anio, mes))
+        resumen = cursor.fetchall()
+        if resumen:
+            COLUMNAS.insert(1, resumen[0][8])
+            a = dict()
+            for r in resumen:
+                a[r[4]] = r[9]
+            for r in RATIOS:
+                raux = RESULTADO.get(r, [r])
+                raux.insert(1, eval(RATIOS[r]))
+                RESULTADO[r] = raux
+        b = a
+    # while existan_datos:
+    #     COLUMNAS.append(anio)
+    #     a = dict()
+    #     for r in resumen:
+    #         a[r[1]] = r[3]
+    #     for r in RATIOS:
+    #         RESULTADO[r] = RESULTADO.get(r, [r]) + [eval(RATIOS[r])]
+    #     anio = int(anio) - 1
+    #     cursor.execute(
+    #         SQL_RESUMEN % (cod_entidad, anio))
+    #     resumen = cursor.fetchall()
+    #     existan_datos = resumen != []
+    return RESULTADO.values(), COLUMNAS
+
+def get_analisisRelativo_pdf(cod_entidad, anio):
+    cursor = cnx.cursor()
+    aniom = int(anio) - 1
+
+    RATIOS = {}
+    RATIOS[
+        'Ingresos de Actividades'] = "(float(a.get(540,0)) / float(a.get(540,0))*100) if (a.get(540,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Costos de Ventas'] = "(float(a.get(727,1)) / float(a.get(540,1))*100) if (a.get(727,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Otros Ingresos'] = "(float(a.get(682,0)) / float(a.get(540,0))*100) if (a.get(682,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Costos de Distribucion'] = "(float(a.get(1324,0)) / float(a.get(540,0))*100) if (a.get(1324,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Gastos Administracion'] = "(float(a.get(618,0)) / float(a.get(540,0))*100) if (a.get(618,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Otros Gastos'] = "(float(a.get(815,0)) / float(a.get(540,0))*100) if (a.get(815,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Otras Ganancias'] = "(float(a.get(1325,0)) / float(a.get(540,0))*100) if (a.get(1325,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancias'] = "(float(a.get(817,0)) / float(a.get(540,0))*100) if (a.get(817,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancias Que Surgen'] = "(float(a.get(1326,0)) / float(a.get(540,0))*100) if (a.get(1326,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ingresos Financieros'] = "(float(a.get(558,0)) / float(a.get(540,0))*100) if (a.get(558,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Costos Financieros'] = "(float(a.get(764,0)) / float(a.get(540,0))*100) if (a.get(764,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Deterioro de Valor'] = "(float(a.get(9744,0)) / float(a.get(540,0))*100) if (a.get(9744,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Diferencias de Cambio'] = "(float(a.get(849,0)) / float(a.get(540,0))*100) if (a.get(849,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Resultados por Unidades'] = "(float(a.get(516,0)) / float(a.get(540,0))*100) if (a.get(516,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancias de Cobertura'] = "(float(a.get(10377,0)) / float(a.get(540,0))*100) if (a.get(10377,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancias Antes del Impuesto'] = "(float(a.get(788,0)) / float(a.get(540,0))*100) if (a.get(788,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Gastos por Impuestos a las Ganancias'] = "(float(a.get(476,0)) / float(a.get(540,0))*100) if (a.get(476,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancias Procedentes Continuada'] = "(float(a.get(479) or 0) / float(a.get(540) or 0)*100) if (a.get(479,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancias Porcentes Discontinuas'] = "(float(a.get(1328,0)) / float(a.get(540,0))*100) if (a.get(1328,0) and a.get(540,0)) else 0"
+    RATIOS[
+        'Ganancia (Perdida)'] = "(float(a.get(479,0)) / float(a.get(540,0))*100) if (a.get(479,0) and a.get(540,0)) else 0"
+
+    # AÑOS
+    SQL_ANIOS = """select coalesce(min(anio),%s), coalesce(max(anio),%s)  from analisis_relativo_pdf  where cod_entidad = '%s' and anio <= %s """
+    anios = {}
+    cursor.execute(
+        SQL_ANIOS % (anio, anio, cod_entidad, anio))
+
+    anios = cursor.fetchone()
+    anio = anios[0]
+    # ENTIDAD
+    cursor.execute(
+        """SELECT DISTINCT
+    * from entidad where cod_entidad ='%s'""" % (
+            cod_entidad))
+    entidad = cursor.fetchone()[1]
+    # FIN ENTIDAD
+    SQL_RESUMEN = """select distinct *  from analisis_relativo_pdf  where cod_entidad = '%s' and anio in ('%s')"""
+    RESULTADO = {}
+    cursor.execute(
+        SQL_RESUMEN % (cod_entidad, anio))
+    resumen = cursor.fetchall()
+    existan_datos = resumen != []
+    COLUMNAS = ["ANALISIS RELATIVO"]
+
+    for anio in range(anios[0], anios[1] + 1):
+        cursor.execute(
+            SQL_RESUMEN % (cod_entidad, anio))
+        resumen = cursor.fetchall()
+        if resumen:
+            COLUMNAS.insert(1, resumen[0][8])
+            a = dict()
+            for r in resumen:
+                a[r[4]] = r[9]
+            for r in RATIOS:
+                raux = RESULTADO.get(r, [r])
+                raux.insert(1, eval(RATIOS[r]))
+                RESULTADO[r] = raux
+    return RESULTADO.values(), COLUMNAS
+
+
 @app.route('/imprimetureporte/<cod_entidad>/<anio>/<mes>', methods=["GET", "POST"])
-def imprimetureportea(cod_entidad, anio, mes):
+def imprimetureporte(cod_entidad, anio, mes):
+    from PIL import Image
     cursor = cnx.cursor()
     parametros = {'cod_entidad': cod_entidad}
     cursor.execute("""select cod_entidad,desc_entidad from entidad where cod_entidad =%(cod_entidad)s""",
@@ -5259,7 +5735,7 @@ def imprimetureportea(cod_entidad, anio, mes):
                        WHERE documento.cod_entidad = '%s'""" % (cod_entidad))
     entidadC = cursor.fetchall()
     # NOF-FM
-    data, columnas = get_nofresumen(cod_entidad, anio, mes)
+    data, columnas = get_nofresumen_pdf(cod_entidad, anio, mes)
     columna = columnas[1:]
     if columna == []:
         columna = "n/a"
@@ -5382,19 +5858,35 @@ def imprimetureportea(cod_entidad, anio, mes):
         porcientodeuda = (Deudor / testructura) * 100
         porcientoCapital = (Capital / testructura) * 100
     # RATIOS
-    data3, columnas3 = get_portadaratiosdd(cod_entidad, anio, mes)
+    data3, columnas3 = get_ratiosdd_pdf(cod_entidad, anio, mes)
     # EERR
-    data4, columnas4 = get_portadaeresultado(cod_entidad, anio, mes)
+    data4, columnas4 = get_eresultado_pdf(cod_entidad, anio, mes)
     # GRAFICO EERR
-    return render_template("/imprimetureporte.html", entidad=entidad, data=list(data), columnas=columnas,
-                               columna1=columna1, datonvxt1=datonvxt1,
-                               columna=columna, datonof=datonof, dato2nof=dato2nof, data1=list(data1),
-                               columnas1=columnas1, corriente=corriente, Nocorriente=Nocorriente, Total=Total,
-                               corrientepasivo=corrientepasivo, nocorrientepasivo=nocorrientepasivo,
-                               totalpasivo=totalpasivo, Deudor=Deudor, Capital=Capital, testructura=testructura,
-                               porcientodeuda=porcientodeuda, porcientoCapital=porcientoCapital, data3=data3,
-                               columnas3=columnas3, data4=list(data4), columnas4=columnas4, entidadC=entidadC,
-                               patrimonio=patrimonio, USD=USD, CLP=CLP,cod_entidad=cod_entidad,anio=anio,mes=mes)
+    data5, columnas5 = get_analisisRelativo_pdf(cod_entidad, anio)
+    data6, columnas6 = get_balance_pdf(cod_entidad, anio, mes)
+    hoy = datetime.now()
+    hoy = hoy.strftime("%d-%m-%Y")
+    return render_template("/imprimetureporte.html",entidad=entidad, data=list(data), columnas=columnas,
+                           columna1=columna1, datonvxt1=datonvxt1,
+                           columna=columna, datonof=datonof, dato2nof=dato2nof, data1=list(data1),
+                           columnas1=columnas1, corriente=corriente, Nocorriente=Nocorriente, Total=Total,
+                           corrientepasivo=corrientepasivo, nocorrientepasivo=nocorrientepasivo,
+                           totalpasivo=totalpasivo, Deudor=Deudor, Capital=Capital, testructura=testructura,
+                           porcientodeuda=porcientodeuda, porcientoCapital=porcientoCapital, data3=data3,
+                           columnas3=columnas3, data4=list(data4), columnas4=columnas4, entidadC=entidadC,
+                           patrimonio=patrimonio, USD=USD, CLP=CLP, cod_entidad=cod_entidad, anio=anio, mes=mes,
+                           data5=list(data5), columnas5=columnas5, hoy=hoy, data6=list(data6),columnas6=columnas6)
+
+
+@app.route('/pdfreporte/<cod_entidad>/<anio>/<mes>', methods=["GET", "POST"])
+def pdfreporte(cod_entidad,anio,mes):
+    config = pdfkit.configuration(wkhtmltopdf="C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
+    pdfkit.from_url("http://192.168.1.168:5555/imprimetureporte/" + cod_entidad + "/" + anio + "/"+ mes , "reporte.pdf",
+                    configuration=config)
+    resp = Response(open("reporte.pdf", "rb").read())
+    resp.headers['Content-Disposition'] = "inline; filename=balance.pdf"
+    resp.mimetype = 'application/pdf'
+    return resp
 
 
 @app.route('/ResumenEmpresa/<cod_entidad>/<anio>/<mes>', methods=["GET", "POST"])
@@ -5428,7 +5920,6 @@ def ResumenEmpresa(cod_entidad, anio, mes):
             columna = "n/a"
         else:
             columna = columnas[1:]
-
         if list(data) == []:
             datonof = "n/a"
             dato2nof = "n/a"
@@ -5557,10 +6048,8 @@ def ResumenEmpresa(cod_entidad, anio, mes):
                                totalpasivo=totalpasivo, Deudor=Deudor, Capital=Capital, testructura=testructura,
                                porcientodeuda=porcientodeuda, porcientoCapital=porcientoCapital, data3=data3,
                                columnas3=columnas3, data4=list(data4), columnas4=columnas4, entidadC=entidadC,
-                               patrimonio=patrimonio, USD=USD, CLP=CLP,cod_entidad=cod_entidad,anio=anio,mes=mes)
+                               patrimonio=patrimonio, USD=USD, CLP=CLP, cod_entidad=cod_entidad, anio=anio, mes=mes)
     return redirect("/login")
-
-
 
 
 def get_nof(cod_entidad, anio, mes):
@@ -6169,4 +6658,5 @@ def CNumDb(s, dec=10):
 if __name__ == "__main__":
     db.create_all()
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
     app.run(debug=True, host='0.0.0.0', port=5555)

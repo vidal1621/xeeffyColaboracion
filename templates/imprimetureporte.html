@@ -3,15 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Reporte</title>
-    <link rel=stylesheet href="../static/css/bootstrap.min.css" type="text/css" media=screen>
-    <link rel=stylesheet href="../static/css/bootstrap-grid.min.css" type="text/css" media=screen>
-    <link rel=stylesheet href="../static/css/bootstrap-reboot.min.css" type="text/css" media=screen>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <!--DESCARGAR Y CREAR ARCHIVO-->
-    <script src="https://kit.fontawesome.com/e69f4649d0.js" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <script src="../static/js/popper.min.js"></script>
-    <script src="../static/js/bootstrap.min.js"></script>
-    <script src="../static/js/bootstrap.bundle.min.js"></script>
     <link href='https://fonts.googleapis.com/css?family=Aladin' rel='stylesheet'>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link href="../static/css/print.css" rel="stylesheet" type="text/css" media="print">
@@ -21,12 +16,268 @@
           href="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.1.0/cookieconsent.min.css"/>
     <script src="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.1.0/cookieconsent.min.js"></script>
     <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
-
+    <script src="/static/js/argon-dashboard.min.js?v=1.1.0"></script>
+    <script src="https://cdn.trackjs.com/agent/v3/latest/t.js"></script>
     <link href="/static/fontawesome-free-5.11.2-web/css/all.css" rel="stylesheet"/>
+    <script src="/static/js/Chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.4.1/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/2.3.4/jspdf.plugin.autotable.min.js"></script>
+    {##}
+    {#        <style type="text/css" media="print">#}
+    {#            @page {#}
+    {#                size: landscape;#}
+    {#            }#}
+    {#        </style>#}
+    <style type="text/css" media="print">
+        #sidebar {
+            display: none;
+        }
+
+        main {
+            float: none;
+        }
+
+        @media print {
+            @page {
+                margin: 2cm;
+
+            }
+        }
+
+        div {
+            page-break-inside: avoid;
+        }
+
+        table th {
+            text-align: center;
+        }
+
+    </style>
 </head>
 <body>
-    <img src="/static/images/xeeffy_logo_index.png" width="300px">
-    <br>
-    <h1 align="center">{{ entidad  }}</h1>
+
+    <div class="header">
+        <img align="top" src="/static/images/xeeffy_logo_index.png" width="120px">
+        <font face="Comic Sans"><h4 align="left">{{ hoy }}</h4></font>
+        <h3 align="center ">{{ entidad }}( {% if CLP == 'CLP' %}
+            {{ CLP }} <span class="avatar avatar-sm rounded-circle">
+                <img alt="Image placeholder" width="50px" src="/static/images/chile.png">
+              </span>
+        {% else %}
+            {{ USD }} <span class="avatar avatar-sm rounded-circle">
+                <img alt="Image placeholder" width="50px" src="/static/images/eeuu.png">
+              </span>
+        {% endif %})</h3>
+
+    </div>
+
+<div class="row">
+    <div class="body">
+        <div class="col-md-4">
+            <table border="1" id="tabla_familia">
+                <thead class="thead-light">
+                <tr>
+                    {% for c in columnas6 %}
+                        <th style="background: #B52809"><P style="color: #ffffff">{{ c }}</P></th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for d in data6 %}
+                    <tr>
+                        <td align="left">{{ d[0] }}</td>
+                        {% for c in range(d | length -1) %}
+                            <td align="right">
+                                {{ "{:,.0f}".format(d[c+1]) }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <br>
+            <table border="1" id="tabla_familia">
+                <thead class="thead-light">
+                <tr>
+                    {% for c in columnas %}
+                        <th style="background: #b8a624"><P style="color: #ffffff">{{ c }}</P></th>
+                    {% endfor %}
+
+                </tr>
+                </thead>
+                <tbody>
+                {% for d in data %}
+                    <tr>
+                        <td>{{ d[0] }}</td>
+                        {% for c in range(d | length -1) %}
+                            <td align="right">
+                                {{ "{:,.0f}".format(d[c+1]) }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="body">
+        <div class="col-md-4">
+            <table border="1">
+                <thead class="thead-light">
+                <tr>
+                    {% for c in columnas5 %}
+                        <th style="background: #4d7bca"><P style="color: #ffffff">{{ c }}</P></th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for d in data5 %}
+                    <tr>
+                        <td>{{ d[0] }}</td>
+                        {% for c in range(d | length -1) %}
+                            <td align="right">
+                                {{ "{:,.2f}".format(d[c+1]) }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <br>
+            <table border="1">
+
+                <thead class="thead-light">
+                <tr>
+                    {% for c in columnas3 %}
+
+                        <th style="background: #1e932a"><P style="color: #ffffff">{{ c }}</P></th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for d in data3 %}
+                    <tr>
+                        <td>{{ d[0] }}</td>
+                        {% for c in range(d | length -1) %}
+                            <td align="right">
+
+                                {{ "{:,.2f}".format(d[c+1]) }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="body">
+        <div class="col-md-4">
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <canvas id="speedChart" width="30" height="10"></canvas>
+    </div>
+</div>
+<br>
+
+<div class="row">
+    <div class="body">
+        <div class="col-md-6">
+            <table border="1" id="tabla_familia">
+                <thead class="thead-light">
+                <tr>
+                    {% for c in columnas4 %}
+
+                        <th style="background: #4ab5e2"><P style="color: #ffffff">{{ c }}</P></th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for d in data4 %}
+                    <tr>
+                        <td>{{ d[0] }}</td>
+                        {% for c in range(d | length -1) %}
+                            <td align="right">
+                                {{ "{:,.2f}".format(d[c+1]) }}
+                            </td>
+                        {% endfor %}
+
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+</div>
+<footer>® XEEFFY 2020</footer>
+
+{#<button onclick="printHTML()">Imprimir</button>#}
+
+<script>
+    var speedCanvas = document.getElementById("speedChart");
+
+    Chart.defaults.global.defaultFontFamily = "Lato";
+    Chart.defaults.global.defaultFontSize = 18;
+
+    var dataFirst = {
+        label: "NOF",
+        data: {{datonof | tojson}},
+        lineTension: 0,
+        fill: false,
+        borderColor: 'red'
+    };
+
+    var dataSecond = {
+        label: "FM",
+        data:{{dato2nof | tojson}},
+        lineTension: 0,
+        fill: false,
+        borderColor: 'blue'
+    };
+
+    var speedData = {
+        labels: {{columna|tojson}},
+        {#datasets: [dataFirst]#}
+        datasets: [dataFirst, dataSecond]
+    };
+
+    var chartOptions = {
+        legend: {
+            display: true,
+            position: 'top',
+            labels: {
+                boxWidth: 80,
+                fontColor: 'black'
+            }
+        }
+    };
+
+    var lineChart = new Chart(speedCanvas, {
+        type: 'line',
+        data: speedData,
+        options: chartOptions
+
+    });
+
+</script>
+<script>
+    setTimeout(function () {
+        printHTML()
+
+        function printHTML() {
+            if (window.print) {
+                window.print();
+            }
+        }
+    }, 1000);
+    setTimeout(function () {
+        window.location.href = '/docEmpresa';
+    }, 5000);
+</script>
+
 </body>
 </html>
